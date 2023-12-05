@@ -5,8 +5,8 @@ stages:
   - test
   - code_quality_check
   - code_format
-  - coverage_check
-  - email_notification
+  - coverage_check  
+  - email_notification   #alsls
 
 variables:
   NEXT_VERSION: "latest"
