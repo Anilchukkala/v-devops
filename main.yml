@@ -1,0 +1,71 @@
+image: node:latest
+
+stages:
+  - build
+  - test
+  - code_quality_check
+  - code_format
+  - coverage_check
+  - email_notification
+
+variables:
+  NEXT_VERSION: "latest"
+
+before_script:
+  - npm install -g npm@latest
+  - npm install
+
+build:
+  stage: build
+  script:
+    - npm run build
+    - ls -l ./.next
+
+test:
+  stage: test
+  script:
+    - npm run test:ci
+    - npx jest --coverage --ci
+    - ls -l coverage
+  artifacts:
+    paths:
+      - coverage/
+
+code_quality_check:
+  stage: code_quality_check
+  script:
+    - npm run lint  # Replace with the actual command for your code quality tool
+  allow_failure: true  # Continue with the pipeline even if code quality check fails
+
+
+code_format:
+  stage: code_format
+  script:
+    - npm run format  # Replace with the actual command for your code formatter
+  only:
+    - merge_requests
+    - master
+
+after_script:
+  - >
+    COVERAGE_THRESHOLD=80
+    COVERAGE_REPORT_FILE="coverage/lcov-report/index.html"
+    COVERAGE_PERCENTAGE=$(cat $COVERAGE_REPORT_FILE | grep -oP '(?<=<strong>)[^%]+' | awk '{ print int($0) }')
+    if [ "$COVERAGE_PERCENTAGE" -lt "$COVERAGE_THRESHOLD" ]; then
+      echo "Unit test coverage is below the minimum threshold ($COVERAGE_PERCENTAGE% < $COVERAGE_THRESHOLD%)."
+      exit 1
+    else
+      echo "Unit test coverage meets the minimum threshold ($COVERAGE_PERCENTAGE% >= $COVERAGE_THRESHOLD%)."
+    fi
+
+email_failure_notification:
+  stage: email_notification
+  script:
+    - >
+      if [ "$CI_PIPELINE_SOURCE" == "push" ] && [ "$COVERAGE_PERCENTAGE" -lt "$COVERAGE_THRESHOLD" ]; then
+        echo "Sending email notification..."
+        echo "The pipeline has failed due to low test coverage." | mail -s "Pipeline Failure - Test Coverage" anilchukkala1994@gmail.com
+      fi
+  only:
+    - branches
+  when: always
