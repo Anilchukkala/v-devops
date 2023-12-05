@@ -34,17 +34,13 @@ test:
 code_quality_check:
   stage: code_quality_check
   script:
-    - npm run lint  # Replace with the actual command for your code quality tool
+    - npm run lint > code_quality_result.json
+  artifacts:
+    paths:
+      - code_quality_result.json
   allow_failure: true  # Continue with the pipeline even if code quality check fails
 
-
-code_format:
-  stage: code_format
-  script:
-    - npm run format  # Replace with the actual command for your code formatter
-  only:
-    - merge_requests
-    - master
+# ...
 
 after_script:
   - >
@@ -57,6 +53,8 @@ after_script:
     else
       echo "Unit test coverage meets the minimum threshold ($COVERAGE_PERCENTAGE% >= $COVERAGE_THRESHOLD%)."
     fi
+    # Save coverage result to a JSON file
+    echo "{\"coverage_percentage\": $COVERAGE_PERCENTAGE}" > coverage_result.json
 
 email_failure_notification:
   stage: email_notification
@@ -68,4 +66,6 @@ email_failure_notification:
       fi
   only:
     - branches
-  when: always 
+  when: always
+  dependencies:
+    - after_script
