@@ -68,4 +68,4 @@ email_failure_notification:
       fi
   only:
     - branches
-  when: always
+  when: always  #hahaha
