@@ -83,7 +83,8 @@ email_failure_notification:
     - >
       if [ "$CI_PIPELINE_SOURCE" == "push" ] && [ "$COVERAGE_PERCENTAGE" -lt "$COVERAGE_THRESHOLD" ]; then
         echo "Sending email notification..."
-        echo -e "The pipeline has failed due to low test coverage." | mail -s "Pipeline Failure - Test Coverage" -a "From: sender@example.com" soumith71@gmail.com
+        echo -e "The pipeline has failed due to low test coverage." | mail -s "Pipeline Failure - Test Coverage" -a "From: anilchukkala1994@gmail.com
+" soumith71@gmail.com
       fi
   only:
     - branches
