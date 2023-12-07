@@ -47,7 +47,7 @@ email_notification:
     - master
   except:
     - email_notification
-  when: on_failure  #sk
+  when: on_failure  #
   after_script:
     - echo "Job finished"
     - if [[ "$CI_PIPELINE_SOURCE" == "push" ]]; then
