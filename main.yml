@@ -11,6 +11,8 @@ stages:
 variables:
   NEXT_VERSION: "latest"
   COVERAGE_PERCENTAGE: "0" # Define COVERAGE_PERCENTAGE as a job variable
+  COVERAGE_THRESHOLD: 80  # Adjust the threshold as needed
+  EMAIL_RECIPIENT: "anilchukkala1994@gmail.com"
 
 before_script:
   - npm install -g npm@latest
@@ -67,18 +69,27 @@ code_format:
 
 after_script:
   - |
-    COVERAGE_THRESHOLD=80
     COVERAGE_REPORT_FILE="coverage/lcov-report/index.html"
-    COVERAGE_PERCENTAGE=$(cat $COVERAGE_REPORT_FILE | grep -oP '(?<=<strong>)[^%]+' | awk '{ print int($0) }')
-    echo "COVERAGE_PERCENTAGE=$COVERAGE_PERCENTAGE" >> $CI_ENVIRONMENT_SLUG.env
+    if [ -f "$COVERAGE_REPORT_FILE" ]; then
+      COVERAGE_PERCENTAGE=$(cat "$COVERAGE_REPORT_FILE" | grep -oP '(?<=<strong>)[^%]+' | awk '{ print int($0) }')
+      echo "COVERAGE_PERCENTAGE=$COVERAGE_PERCENTAGE" >> $CI_ENVIRONMENT_SLUG.env
+    else
+      echo "COVERAGE_REPORT_FILE not found."
+    fi
 
 email_failure_notification:
   stage: email_notification
   script:
     - |
+      echo "CI_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE"
+      echo "COVERAGE_PERCENTAGE: $COVERAGE_PERCENTAGE"
+      echo "COVERAGE_THRESHOLD: $COVERAGE_THRESHOLD"
+
       if [ "$CI_PIPELINE_SOURCE" == "push" ] && [ "$COVERAGE_PERCENTAGE" -lt "$COVERAGE_THRESHOLD" ]; then
         echo "Sending email notification..."
         echo "The pipeline has failed due to low test coverage." | mail -s "Pipeline Failure - Test Coverage" anilchukkala1994@gmail.com
+      else
+        echo "No email notification sent."
       fi
   only:
     - branches
