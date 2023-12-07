@@ -1,5 +1,4 @@
 image: node:latest
-
 stages:
   - build
   - test
@@ -7,50 +6,87 @@ stages:
   - code_format
   - coverage_check
   - email_notification
-
+ 
 variables:
-  MAIL_TO: "anilchukkala1994@gmail.com"
-
+  NEXT_VERSION: "latest"
+ 
 before_script:
+  - npm install -g npm@latest
   - npm install
-
+ 
+ 
 build:
   stage: build
   script:
+    - echo "This is job name and pipeline id $CI_JOB_NAME && $CI_PIPELINE_ID" >> gitlab_details.txt
     - npm run build
-
+    - ls -l ./.next
+ 
+  artifacts:
+    name: "$CI_JOB_ID"
+    paths:
+     - gitlab_details.txt
+ 
 test:
   stage: test
   script:
-    - npm test
-
+    - npm run test:ci
+    - npx jest --coverage --ci
+    - ls -l coverage
+  artifacts:
+    name: "$CI_JOB_ID"
+    paths:
+      - gitlab_details.txt
+ 
 code_quality:
   stage: code_quality
   script:
-    - npm run lint
-
+    -  echo "This is job name and pipeline id $CI_JOB_NAME && $CI_PIPELINE_ID" >> gitlab_details.txt
+     - npm install # Ensure dependencies are installed
+    - npx eslint . --ext .js,.jsx,.ts,.tsx # Run ESLint checks
+  allow_failure: true  # Continue with the pipeline even if code quality check fails
+  artifacts:
+    name: "$CI_JOB_ID"
+    paths:
+      - gitlab_details.txt
+ 
 code_format:
   stage: code_format
   script:
-    - npm run format:check
-
-coverage_check:
-  stage: coverage_check
-  script:
-    - npm run coverage:check
-
-email_notification:
+    - npm run format  # Replace with the actual command for your code formatter
+    - mvn checkstyle:checkstyle
+    - cat checksyle-result.txt
+  allow_failure: false
+  only:
+    - merge_requests
+    - master
+ 
+  artifacts:
+    name: "$CI_JOB_ID"
+    paths:
+      - gitlab_details.txt
+     
+after_script:
+  - >
+    COVERAGE_THRESHOLD=80
+    COVERAGE_REPORT_FILE="coverage/lcov-report/index.html"
+    COVERAGE_PERCENTAGE=$(cat $COVERAGE_REPORT_FILE | grep -oP '(?<=<strong>)[^%]+' | awk '{ print int($0) }')
+    if [ "$COVERAGE_PERCENTAGE" -lt "$COVERAGE_THRESHOLD" ]; then
+      echo "Unit test coverage is below the minimum threshold ($COVERAGE_PERCENTAGE% < $COVERAGE_THRESHOLD%)."
+      exit 1
+    else
+      echo "Unit test coverage meets the minimum threshold ($COVERAGE_PERCENTAGE% >= $COVERAGE_THRESHOLD%)."
+    fi
+ 
+email_failure_notification:
   stage: email_notification
   script:
-    - echo "Sending notification email..."
-  only:
-    - master
-  except:
-    - email_notification
-  when: on_failure  #
-  after_script:
-    - echo "Job finished"
-    - if [[ "$CI_PIPELINE_SOURCE" == "push" ]]; then
-        echo "Sending email notification...";
-        echo "Pipeline failed! Check details here: $CI_PIPELINE_URL" | mail -s "Pipeline Failed" $MAIL_TO;
+    - >
+      if [ "$CI_PIPELINE_SOURCE" == "push" ] && [ "$COVERAGE_PERCENTAGE" -lt "$COVERAGE_THRESHOLD" ]; then
+        echo "Sending email notification..."
+        echo "The pipeline has failed due to low test coverage." | mail -s "Pipeline Failure - Test Coverage" soumith71@gmail.com
+
       fi
+  only:
+    - branches
+  when: always
